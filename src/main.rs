@@ -1,6 +1,9 @@
+use crate::search::search_interval;
+
 pub mod node;
 pub mod tree;
 pub mod build;
+pub mod search;
 
 
 fn main() {
@@ -22,4 +25,7 @@ fn main() {
     .is_err();
 
     println!("Empty input panicked as expected? {}", panicked);
+
+    let overlap_it = search_interval(&tree, 10, 18, true);
+    println!("Overlapping intervals {:?}", overlap_it);
 }
