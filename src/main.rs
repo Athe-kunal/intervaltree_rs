@@ -1,14 +1,13 @@
-use crate::search::search_interval;
+use crate::{node::IntervalTreeNode, search::search_interval};
 
 pub mod node;
-pub mod tree;
 pub mod build;
 pub mod search;
 
 
 fn main() {
     // Example intervals (u32,u32) — adjust as you like
-    let items: Vec<(u32, u32)> = vec![(15, 20), (10, 30), (17, 19), (5, 20), (12, 15), (30, 40)];
+    let items: Vec<(u32, u32, ())> = vec![(15, 20, ()), (10, 30,()), (17, 19, ()), (5, 20, ()), (12, 15, ()), (30, 40, ())];
 
     // Build the tree
     let tree = build::build_tree(items);
@@ -20,7 +19,7 @@ fn main() {
     // Optional: demonstrate the empty-input panic is triggered
     let panicked = std::panic::catch_unwind(|| {
         // This should panic in your build_tree() due to empty input
-        let _ = build::build_tree(Vec::new());
+        let _: IntervalTreeNode<()> = build::build_tree(Vec::new());
     })
     .is_err();
 

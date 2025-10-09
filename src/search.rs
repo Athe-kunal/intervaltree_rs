@@ -1,20 +1,19 @@
-use crate::node::Node;
-use crate::tree::Tree;
-use crate::build::make_node;
+use crate::node::{IntervalTreeNode};
+use crate::build::{make_node, make_it_tree};
 
 
-pub fn search_interval(tree: &Tree, start: u32, end: u32, inclusive: bool) -> Vec<(u32, u32)>{
-    let mut overlapping_items: Vec<(u32, u32)> = Vec::new();
-    let search_node = make_node(start, end);
-    let mut curr_iter_node = &tree.root;
-    let overlap_fn: fn(&Node, &Node) -> bool = if inclusive {
-        Node::inclusive_overlaps
+pub fn search_interval<T>(tree: &IntervalTreeNode<T>, start: u32, end: u32, inclusive: bool) -> Vec<(u32, u32, &T)>{
+    let mut overlapping_items: Vec<(u32, u32, &T)> = Vec::new();
+    let search_node: IntervalTreeNode<()> = make_it_tree(make_node(start, end, ()));
+    let mut curr_iter_node = tree;
+    let overlap_fn: fn(&IntervalTreeNode<T>, &IntervalTreeNode<()>) -> bool = if inclusive {
+        IntervalTreeNode::inclusive_overlaps
     }else {
-        Node::overlaps
+        IntervalTreeNode::overlaps
     };
     loop {     
         if overlap_fn(curr_iter_node, &search_node){
-            overlapping_items.push((curr_iter_node.left, curr_iter_node.right));
+            overlapping_items.push((curr_iter_node.node.left, curr_iter_node.node.right, &curr_iter_node.node.data));
         }
         if curr_iter_node.max > search_node.max{
             if let Some(ref left_child) = curr_iter_node.left_child {

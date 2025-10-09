@@ -1,45 +1,63 @@
 #[derive(Debug)]
-pub struct Node {
-    pub left: u32,
-    pub right: u32,
+pub struct IntervalTreeNode<T> {
+    pub node: Node<T>,
     pub max: u32,
-    pub left_child: Option<Box<Node>>,
-    pub right_child: Option<Box<Node>>,
+    pub left_child: Option<Box<IntervalTreeNode<T>>>,
+    pub right_child: Option<Box<IntervalTreeNode<T>>>,
 }
 
-impl Node {
-    pub fn new(left: u32, right: u32) -> Result<Self, String>{
+#[derive(Debug)]
+pub struct Node<T = ()> {
+    pub left: u32,
+    pub right: u32,
+    pub data: T
+}
+
+impl<T> Node<T> {
+    pub fn new(left: u32, right: u32, data: T) -> Result<Self, String> {
         if left >= right {
-            return Err(format!("Invalid interval: left ({}) must be < right ({})", left, right));
+            return Err(format!("Invalid interval: left ({}) >= right ({})", left, right));
         }
-        Ok(Self { left, right, max: right, left_child: None, right_child: None })
+        Ok(Self {
+            left,
+            right,
+            data,
+        })
+    }
+}
+
+
+impl<T> IntervalTreeNode<T>{
+    pub fn new( root_node: Node<T>) -> Result<Self, String>{
+        let max_val = root_node.right;
+        Ok(Self { node: root_node, max: max_val, left_child: None, right_child: None })
     }
 
     pub fn update_max(&mut self, candidate: u32) {
         self.max = self.max.max(candidate)
     }
 
-    pub fn overlaps(&self, other: &Self) -> bool {
-        self.left < other.left
+    pub fn overlaps<U>(&self, other: &IntervalTreeNode<U>) -> bool {
+        self.node.left < other.node.left
     }
     
-    pub fn inclusive_overlaps(&self, other: &Self) -> bool {
-        self.left <= other.left
+    pub fn inclusive_overlaps<U>(&self, other: &IntervalTreeNode<U>) -> bool {
+        self.node.left <= other.node.left
     }
 
-    pub fn subset(&self, other: &Self) -> bool {
-        self.left < other.left && other.right > self.right
+    pub fn subset<U>(&self, other: &IntervalTreeNode<U>) -> bool {
+        self.node.left < other.node.left && other.node.right > self.node.right
     }
     
-    pub fn inclusive_subset(&self, other: &Self) -> bool {
-        self.left <= other.left && other.right >= self.right
+    pub fn inclusive_subset<U>(&self, other: &IntervalTreeNode<U>) -> bool {
+        self.node.left <= other.node.left && other.node.right >= self.node.right
     }
 
-    pub fn insert_left(&mut self, child: Node) {
+    pub fn insert_left(&mut self, child:IntervalTreeNode<T>) {
         self.left_child = Some(Box::new(child));
     }
     
-    pub fn insert_right(&mut self, child: Node) {
+    pub fn insert_right(&mut self, child:IntervalTreeNode<T>) {
         self.right_child = Some(Box::new(child));
     }
 
