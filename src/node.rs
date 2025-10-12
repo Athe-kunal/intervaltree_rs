@@ -1,7 +1,10 @@
+use rand::random;
+
 #[derive(Debug)]
 pub struct IntervalTreeNode<T> {
     pub node: Node<T>,
     pub max: u32,
+    pub priority: u64,
     pub left_child: Option<Box<IntervalTreeNode<T>>>,
     pub right_child: Option<Box<IntervalTreeNode<T>>>,
 }
@@ -30,9 +33,16 @@ impl<T> Node<T> {
 impl<T> IntervalTreeNode<T>{
     pub fn new( root_node: Node<T>) -> Result<Self, String>{
         let max_val = root_node.right;
-        Ok(Self { node: root_node, max: max_val, left_child: None, right_child: None })
+        let priority: u64 = random();
+        Ok(Self { node: root_node, max: max_val, priority: priority, left_child: None, right_child: None })
     }
+    pub fn recalc_max(&mut self) {
+        let mut m = self.node.right;
+        if let Some(ref l) = self.left_child { m = m.max(l.max)};
+        if let Some(ref r) = self.right_child { m = m.max(r.max)};
+        self.max = m;
 
+    }
     pub fn update_max(&mut self, candidate: u32) {
         self.max = self.max.max(candidate)
     }

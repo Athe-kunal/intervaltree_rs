@@ -1,7 +1,5 @@
-use crate::node::IntervalTreeNode;
-use crate::node::Node;
-
-
+use crate::node::{IntervalTreeNode,Node};
+use crate::insert::{insert_node};
 
 pub fn make_node<T>(left: u32, right: u32, data: T) -> Node<T> {
     let node: Node<T> = match Node :: new(left, right, data) {
@@ -19,22 +17,6 @@ pub fn make_it_tree<T>(node: Node<T>) -> IntervalTreeNode<T>{
     return it_tree;
 }
 
-pub fn insert<T>(root_node: &mut IntervalTreeNode<T>, new_node: IntervalTreeNode<T>) {
-    root_node.update_max(new_node.max);
-    if new_node.node.left <= root_node.node.left{
-        if let Some(child) = root_node.left_child.as_deref_mut(){
-            insert(child, new_node);
-        }else {
-            root_node.insert_left(new_node);
-        }
-    } else {
-        if let Some(child) = root_node.right_child.as_deref_mut() {
-            insert(child, new_node);
-        }else {
-            root_node.insert_right(new_node);
-        }
-    }
-}
 pub fn build_tree<T>(items: Vec<(u32, u32, T)>) -> IntervalTreeNode<T>{
     if items.is_empty() {
         panic!("Cannot build tree: no intervals provided");
@@ -44,7 +26,7 @@ pub fn build_tree<T>(items: Vec<(u32, u32, T)>) -> IntervalTreeNode<T>{
     let root_node: Node<T> = make_node(left, right, data);
     let mut it_tree: IntervalTreeNode<T> = IntervalTreeNode::new(root_node).unwrap();
     for (left, right, data) in it{
-        insert(&mut it_tree, make_it_tree(make_node(left, right, data)))
+        insert_node(&mut it_tree, make_it_tree(make_node(left, right, data)))
     };
     return it_tree;
 }
