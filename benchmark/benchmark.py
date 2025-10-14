@@ -1,31 +1,30 @@
 """
-Benchmark intervaltree_rs vs intervaltree.
+Benchmark intervaltree_rs vs intervaltree (PyPI).
 
-Assumptions:
-- `intervaltree` is the PyPI library: `from intervaltree import IntervalTree`, query via `overlap(l, r)`.
-- `intervaltree_rs` exposes: `IntervalTree()`, methods `.add(l, r, data=None)` or `.insert(l, r, data=None)`,
-  optional `.build()`, and query via `.search(l, r)` or `.overlap(l, r)`.
-Adapt below in ADAPTERS if your API differs.
+- intervaltree (PyPI): IntervalTree.from_tuples(...), query via .overlap(l, r)
+- intervaltree_rs: IntervalTree(), .add(l, r, data) or .insert(l, r, data), optional .build(), query via .search/.overlap
+Adapt below if your API differs.
 """
 
+import gc
 import math
+import os
 import random
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Tuple, Any
-from intervaltree import IntervalTree
-import intervaltree_rs as itrs  # type: ignore
+from typing import Any, Callable, List, Tuple
 
 import matplotlib.pyplot as plt
 
 # ---------------------- Config ----------------------
 SEED = 123
-SIZES = [1_000, 10_000, 100_000, 300_000, 1_000_000]  # increase/decrease as you like
+SIZES = [1_000, 10_000, 100_000]       # bump as you like (careful with RAM/time)
 N_QUERIES = 5_000
 MAX_COORD = 10_000_000
-AVG_LEN = 500  # average interval length
-QUERY_WIDTHS = [1, 10_000, 1_000_000]  # small / medium / large
-REPEATS = 3  # timing repeats per point; best-of to reduce noise
+AVG_LEN = 500                          # avg interval length (exp-like)
+QUERY_WIDTHS = [1, 10_000, 100_000, 1_000_000]  # small/med/large searches
+REPEATS = 3                            # best-of repeats for timing
+OUTDIR = "bench_plots"
 # ----------------------------------------------------
 
 random.seed(SEED)
@@ -34,11 +33,10 @@ Interval = Tuple[int, int, Any]
 Query = Tuple[int, int]
 
 def gen_intervals(n: int, max_coord: int, avg_len: int) -> List[Interval]:
-    # Geometric-ish lengths, clamped within [0, max_coord]
+    """Random intervals with exponential-ish lengths, clamped to [0, max_coord]."""
     out: List[Interval] = []
     for _ in range(n):
         l = random.randrange(0, max_coord)
-        # length ~ exponential-ish around avg_len; ensure at least 1
         length = max(1, int(random.expovariate(1.0 / avg_len)))
         r = min(max_coord, l + length)
         if r == l:
@@ -47,10 +45,14 @@ def gen_intervals(n: int, max_coord: int, avg_len: int) -> List[Interval]:
     return out
 
 def gen_queries(nq: int, max_coord: int, width: int) -> List[Query]:
+    """Queries of fixed width, clamped within [0, max_coord]."""
+    width = max(1, width)
+    start_max = max(0, max_coord - width)
     qs: List[Query] = []
     for _ in range(nq):
-        l = random.randrange(0, max(1, max_coord - max(1, width)))
-        r = l + max(1, width)
+        # if width > max_coord, start_max==0 -> always l=0, r=max_coord
+        l = random.randrange(0, max(1, start_max))
+        r = min(max_coord, l + width)
         qs.append((l, r))
     return qs
 
@@ -58,13 +60,15 @@ def gen_queries(nq: int, max_coord: int, width: int) -> List[Query]:
 @dataclass
 class Impl:
     name: str
-    build: Callable[[List[Interval]], Any]          # returns a tree object
-    query: Callable[[Any, int, int], int]           # returns number of hits (int) for minimal overhead
+    build: Callable[[List[Interval]], Any]    # returns a tree
+    query: Callable[[Any, int, int], int]     # returns hit count
 
 def _mk_intervaltree_py() -> Impl:
+    # import here so missing dependency doesn't crash whole script
+    from intervaltree import IntervalTree  # type: ignore
 
     def build(intervals: List[Interval]) -> IntervalTree:
-        # IntervalTree accepts (begin, end, data); constructing in one shot is faster than incremental add
+        # one-shot construction is faster than incremental adds
         return IntervalTree.from_tuples([(l, r, d) for (l, r, d) in intervals])
 
     def query(tree: Any, l: int, r: int) -> int:
@@ -73,14 +77,15 @@ def _mk_intervaltree_py() -> Impl:
     return Impl("intervaltree (PyPI)", build, query)
 
 def _mk_intervaltree_rs() -> Impl:
+    import intervaltree_rs as itrs  # type: ignore
 
     def build(intervals: List[Interval]) -> Any:
-        # Try common APIs; adapt if yours differs
         tree = getattr(itrs, "IntervalTree")()
         add = getattr(tree, "add", None) or getattr(tree, "insert", None)
         if add is None:
             raise RuntimeError("intervaltree_rs: no add/insert method found")
         for (l, r, d) in intervals:
+            # pass as three args, not a tuple
             add((l, r, d))
         if hasattr(tree, "build"):
             tree.build()
@@ -93,7 +98,7 @@ def _mk_intervaltree_rs() -> Impl:
             res = tree.overlap(l, r)
         else:
             raise RuntimeError("intervaltree_rs: no search/overlap method found")
-        # Avoid materialization cost if library returns an iterator-like structure
+        # Prefer len if available; otherwise iterate to count
         try:
             return len(res)
         except TypeError:
@@ -101,7 +106,7 @@ def _mk_intervaltree_rs() -> Impl:
 
     return Impl("intervaltree_rs", build, query)
 
-ADAPTERS = []
+ADAPTERS: List[Impl] = []
 try:
     ADAPTERS.append(_mk_intervaltree_rs())
 except Exception as e:
@@ -113,12 +118,13 @@ except Exception as e:
 
 if len(ADAPTERS) < 2:
     print("[error] Need both implementations to compare. Install both packages and rerun.")
-    # You can still run to see single-impl curves, but comparison won’t render fairly.
+    # Script still runs and saves plots for whatever is available.
 
 # ---------------------- Timing helpers ----------------------
 def time_best_of(repeats: int, fn: Callable[[], Any]) -> float:
     best = math.inf
     for _ in range(repeats):
+        gc.collect()
         t0 = time.perf_counter()
         fn()
         dt = time.perf_counter() - t0
@@ -135,18 +141,22 @@ for n in SIZES:
     print(f"\n=== N={n} ===")
     intervals = gen_intervals(n, MAX_COORD, AVG_LEN)
 
-    # Pre-generate queries for each width (same across impls for fairness)
+    # Pre-generate queries for each width (same set across impls)
     queries_by_w = {w: gen_queries(N_QUERIES, MAX_COORD, w) for w in QUERY_WIDTHS}
 
     for impl in ADAPTERS:
-        # Build
+        # Measure build (object dropped each repeat), then build once to keep
         try:
             t_build = time_best_of(REPEATS, lambda: impl.build(intervals))
-            # Rebuild once to get the tree we’ll reuse for search
             tree = impl.build(intervals)
         except MemoryError:
             t_build = math.nan
             tree = None
+        except Exception as e:
+            print(f"[warn] {impl.name}: build failed: {e}")
+            t_build = math.nan
+            tree = None
+
         build_times[impl.name].append(t_build)
         print(f"{impl.name}: build {t_build:.4f}s")
 
@@ -156,22 +166,24 @@ for n in SIZES:
                 query_throughput[impl.name][w].append(math.nan)
             continue
 
-        # Search (batch)
+        # Batch search timing
         for w, queries in queries_by_w.items():
             def run_queries() -> int:
-                count = 0
+                total = 0
                 for (l, r) in queries:
-                    count += impl.query(tree, l, r)
-                return count
+                    total += impl.query(tree, l, r)
+                return total
 
             t_query = time_best_of(REPEATS, run_queries)
-            qps = N_QUERIES / t_query
+            qps = (N_QUERIES / t_query) if t_query > 0 else float("inf")
             query_times[impl.name][w].append(t_query)
             query_throughput[impl.name][w].append(qps)
             print(f"{impl.name}: search width={w} total {t_query:.4f}s ({qps:.0f} q/s)")
 
-# ---------------------- Plots ----------------------
-# 1) Build time vs N
+# ---------------------- Save plots ----------------------
+os.makedirs(OUTDIR, exist_ok=True)
+
+# Build time vs N
 plt.figure()
 for impl in ADAPTERS:
     plt.plot(SIZES, build_times[impl.name], marker="o", label=impl.name)
@@ -180,9 +192,10 @@ plt.ylabel("Build time (s)")
 plt.title("Build time vs N")
 plt.legend()
 plt.tight_layout()
-plt.show()
+plt.savefig(os.path.join(OUTDIR, "build_time_vs_N.png"), dpi=200)
+plt.close()
 
-# 2) Total search time vs N for each query width
+# Total search time vs N for each query width
 for w in QUERY_WIDTHS:
     plt.figure()
     for impl in ADAPTERS:
@@ -192,9 +205,10 @@ for w in QUERY_WIDTHS:
     plt.title(f"Search time vs N (query width={w})")
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(OUTDIR, f"search_time_vs_N_w{w}.png"), dpi=200)
+    plt.close()
 
-# 3) Throughput vs N (higher is better)
+# Throughput vs N (higher is better)
 for w in QUERY_WIDTHS:
     plt.figure()
     for impl in ADAPTERS:
@@ -204,4 +218,7 @@ for w in QUERY_WIDTHS:
     plt.title(f"Search throughput vs N (query width={w})")
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(OUTDIR, f"throughput_vs_N_w{w}.png"), dpi=200)
+    plt.close()
+
+print(f"✅ All plots saved under ./{OUTDIR}/")
