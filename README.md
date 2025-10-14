@@ -1,4 +1,4 @@
-# intervaltree_rs Python Bindings
+# Intervaltree in rust
 
 This crate exposes an interval tree implementation written in Rust to Python via [PyO3](https://pyo3.rs/). The Python wrapper provides the ability to build a tree from tuples, insert additional intervals, search for overlaps, and delete intervals by their `(left, right)` key.
 
