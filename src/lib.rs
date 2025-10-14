@@ -3,6 +3,7 @@ pub mod build;
 pub mod search;
 pub mod insert;
 pub mod delete;
+pub mod python;
 
 use node::{IntervalTreeNode, Node};
 
