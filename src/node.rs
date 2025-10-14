@@ -47,12 +47,14 @@ impl<T> IntervalTreeNode<T>{
         self.max = self.max.max(candidate)
     }
 
-    pub fn overlaps<U>(&self, other: &IntervalTreeNode<U>) -> bool {
-        self.node.left < other.node.left
-    }
-    
-    pub fn inclusive_overlaps<U>(&self, other: &IntervalTreeNode<U>) -> bool {
-        self.node.left <= other.node.left
+    pub fn overlaps_range(&self, ql: u32, qr:u32, inclusive: bool) -> bool {
+        if inclusive {
+            self.node.left <= qr && ql <= self.node.right
+        }
+        else {
+            println!("Excluded {}, {}, {}, {}", self.node.left, self.node.right,qr, ql);
+            self.node.left < qr && ql < self.node.right
+        }
     }
 
     pub fn subset<U>(&self, other: &IntervalTreeNode<U>) -> bool {

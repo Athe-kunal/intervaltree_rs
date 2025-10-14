@@ -1,40 +1,43 @@
 use crate::node::{IntervalTreeNode};
-use crate::build::{make_node, make_it_tree};
 
+pub fn search_interval<'a, T>(
+    root: &'a IntervalTreeNode<T>,
+    ql: u32,
+    qr: u32,
+    inclusive: bool,
+) -> Vec<(u32, u32, &'a T)> {
+    let mut out = Vec::new();
+    search_rec(Some(root), ql, qr, inclusive, &mut out);
+    out
+}
 
-pub fn search_interval<T>(tree: &IntervalTreeNode<T>, start: u32, end: u32, inclusive: bool) -> Vec<(u32, u32, &T)>{
-    let mut overlapping_items: Vec<(u32, u32, &T)> = Vec::new();
-    let search_node: IntervalTreeNode<()> = make_it_tree(make_node(start, end, ()));
-    let mut curr_iter_node = tree;
-    let overlap_fn: fn(&IntervalTreeNode<T>, &IntervalTreeNode<()>) -> bool = if inclusive {
-        IntervalTreeNode::inclusive_overlaps
-    }else {
-        IntervalTreeNode::overlaps
-    };
-    loop {     
-        if overlap_fn(curr_iter_node, &search_node){
-            overlapping_items.push((curr_iter_node.node.left, curr_iter_node.node.right, &curr_iter_node.node.data));
-        }
-        if curr_iter_node.max > search_node.max{
-            if let Some(ref left_child) = curr_iter_node.left_child {
-                curr_iter_node = left_child.as_ref(); 
-            } else {
-                break;
-            }
-        }
-        else {
-            if let Some(ref right_child) = curr_iter_node.right_child{
-                curr_iter_node = right_child.as_ref();
-            }
-            else {
-                break;
-            }
+fn search_rec<'a, T>(
+    node: Option<&'a IntervalTreeNode<T>>,
+    ql: u32,
+    qr: u32,
+    inclusive: bool,
+    out: &mut Vec<(u32, u32, &'a T)>,
+) {
+    let Some(n) = node else { return; };
 
-        }
-        if curr_iter_node.is_leaf_node(){
-            break;
+    // Explore left if it can possibly overlap: left.max >= ql
+    if let Some(ref left) = n.left_child {
+        if left.max >= ql {
+            search_rec(Some(left.as_ref()), ql, qr, inclusive, out);
         }
     }
-    overlapping_items
 
+    // Check current node
+    if n.overlaps_range(ql, qr, inclusive) {
+        out.push((n.node.left, n.node.right, &n.node.data));
+    }
+
+    // Explore right if keys there can start before qr
+    let can_right = if inclusive { n.node.left <= qr } else { n.node.left < qr };
+    if can_right {
+        if let Some(ref right) = n.right_child {
+            search_rec(Some(right.as_ref()), ql, qr, inclusive, out);
+        }
+    }
 }
+
