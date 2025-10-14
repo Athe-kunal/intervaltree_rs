@@ -15,10 +15,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: actions/setup-rust@v1
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
+          toolchain: stable
+          override: true
+          profile: minimal
 
       - name: Cache cargo registry and build
         uses: actions/cache@v4
@@ -36,4 +38,3 @@ jobs:
 
       - name: Run tests
         run: cargo test --all --verbose
-
