@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 # ---------------------- Config ----------------------
 SEED = 123
-SIZES = [1_000, 10_000, 100_000]  # increase/decrease as you like
+SIZES = [1_000, 10_000, 100_000, 300_000, 1_000_000]  # increase/decrease as you like
 N_QUERIES = 5_000
 MAX_COORD = 10_000_000
 AVG_LEN = 500  # average interval length
