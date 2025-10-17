@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Fast interval tree (Rust) with Python bindings"
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [{ name = "Astarag Mohapatra", email = "astarag2843@gmail.com" }]
 requires-python = ">=3.8"
 classifiers = [
   "Programming Language :: Python :: 3",

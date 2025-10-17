@@ -17,6 +17,12 @@ pip install maturin
 maturin develop
 ```
 
+You can install the package with (also with uv)
+
+```
+pip install intervaltree_rs
+```
+
 `maturin develop` builds the extension module in-place and installs it into the active virtual environment, making it importable as `intervaltree_rs`.
 
 ## Usage
