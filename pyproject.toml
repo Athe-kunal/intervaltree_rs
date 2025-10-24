@@ -20,3 +20,8 @@ classifiers = [
 
 [tool.maturin]
 module-name = "intervaltree_rs"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
