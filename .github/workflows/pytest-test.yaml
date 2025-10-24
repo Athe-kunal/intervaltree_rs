@@ -27,4 +27,4 @@ jobs:
           uv sync --locked --all-extras --dev
       - name: Run tests
         run: |
-          uv run pytest tests/test_impl -v
+          uv run pytest tests/ -v
