@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 
 # ---------------------- Config ----------------------
 SEED = 123
-SIZES = [1_000, 10_000, 100_000]       # bump as you like (careful with RAM/time)
+SIZES = [1_000, 10_000, 100_000]  # bump as you like (careful with RAM/time)
 N_QUERIES = 5_000
 MAX_COORD = 10_000_000
-AVG_LEN = 500                          # avg interval length (exp-like)
+AVG_LEN = 500  # avg interval length (exp-like)
 QUERY_WIDTHS = [1, 10_000, 100_000, 1_000_000]  # small/med/large searches
-REPEATS = 3                            # best-of repeats for timing
+REPEATS = 3  # best-of repeats for timing
 OUTDIR = "bench_plots"
 # ----------------------------------------------------
 
@@ -31,6 +31,7 @@ random.seed(SEED)
 
 Interval = Tuple[int, int, Any]
 Query = Tuple[int, int]
+
 
 def gen_intervals(n: int, max_coord: int, avg_len: int) -> List[Interval]:
     """Random intervals with exponential-ish lengths, clamped to [0, max_coord]."""
@@ -44,6 +45,7 @@ def gen_intervals(n: int, max_coord: int, avg_len: int) -> List[Interval]:
         out.append((l, r, None))
     return out
 
+
 def gen_queries(nq: int, max_coord: int, width: int) -> List[Query]:
     """Queries of fixed width, clamped within [0, max_coord]."""
     width = max(1, width)
@@ -56,12 +58,14 @@ def gen_queries(nq: int, max_coord: int, width: int) -> List[Query]:
         qs.append((l, r))
     return qs
 
+
 # ---------------------- Adapters ----------------------
 @dataclass
 class Impl:
     name: str
-    build: Callable[[List[Interval]], Any]    # returns a tree
-    query: Callable[[Any, int, int], int]     # returns hit count
+    build: Callable[[List[Interval]], Any]  # returns a tree
+    query: Callable[[Any, int, int], int]  # returns hit count
+
 
 def _mk_intervaltree_py() -> Impl:
     # import here so missing dependency doesn't crash whole script
@@ -76,6 +80,7 @@ def _mk_intervaltree_py() -> Impl:
 
     return Impl("intervaltree (PyPI)", build, query)
 
+
 def _mk_intervaltree_rs() -> Impl:
     import intervaltree_rs as itrs  # type: ignore
 
@@ -84,7 +89,7 @@ def _mk_intervaltree_rs() -> Impl:
         add = getattr(tree, "add", None) or getattr(tree, "insert", None)
         if add is None:
             raise RuntimeError("intervaltree_rs: no add/insert method found")
-        for (l, r, d) in intervals:
+        for l, r, d in intervals:
             # pass as three args, not a tuple
             add((l, r, d))
         if hasattr(tree, "build"):
@@ -106,6 +111,7 @@ def _mk_intervaltree_rs() -> Impl:
 
     return Impl("intervaltree_rs", build, query)
 
+
 ADAPTERS: List[Impl] = []
 try:
     ADAPTERS.append(_mk_intervaltree_rs())
@@ -117,8 +123,11 @@ except Exception as e:
     print(f"[warn] Skipping intervaltree (PyPI): {e}")
 
 if len(ADAPTERS) < 2:
-    print("[error] Need both implementations to compare. Install both packages and rerun.")
+    print(
+        "[error] Need both implementations to compare. Install both packages and rerun."
+    )
     # Script still runs and saves plots for whatever is available.
+
 
 # ---------------------- Timing helpers ----------------------
 def time_best_of(repeats: int, fn: Callable[[], Any]) -> float:
@@ -131,6 +140,7 @@ def time_best_of(repeats: int, fn: Callable[[], Any]) -> float:
         if dt < best:
             best = dt
     return best
+
 
 # ---------------------- Benchmark ----------------------
 build_times = {impl.name: [] for impl in ADAPTERS}
@@ -168,9 +178,10 @@ for n in SIZES:
 
         # Batch search timing
         for w, queries in queries_by_w.items():
+
             def run_queries() -> int:
                 total = 0
-                for (l, r) in queries:
+                for l, r in queries:
                     total += impl.query(tree, l, r)
                 return total
 
