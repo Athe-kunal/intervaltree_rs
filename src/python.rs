@@ -58,7 +58,7 @@ impl PyIntervalTree {
         Ok(existed)
     }
 
-    #[pyo3(signature = (ql, qr, inclusive = true))]
+    #[pyo3(signature = (ql, qr, inclusive = false))]
     fn search<'py>(
         &'py self,
         ql: u32,

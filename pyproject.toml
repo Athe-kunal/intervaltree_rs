@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "intervaltree-rs"             # PyPI name (can have dash)
-version = "0.1.0"
+version = "0.1.1"
 description = "Fast interval tree (Rust) with Python bindings"
 readme = "README.md"
 license = { text = "MIT" }
@@ -20,6 +20,7 @@ classifiers = [
 
 [tool.maturin]
 module-name = "intervaltree_rs"
+include = ["intervaltree_rs.pyi"]
 
 [dependency-groups]
 dev = [
